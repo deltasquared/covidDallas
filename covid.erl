@@ -1,5 +1,5 @@
 -module(covid).
--export([init/0, fetch/0, sample/0, fetchBody/0, dallasRows/0, dallasToday/0, todaysNumbers/1, canDaveGoOut/0]).
+-export([init/0, fetch/0, fetchBody/0, dallasRows/0, dallasToday/0, todaysNumbers/1, canDaveGoOut/0, filterRows/1]).
 
 init() ->
 	application:start(inets),
@@ -8,17 +8,23 @@ init() ->
 	application:start(public_key),
 	application:start(ssl).
 
-sample() ->
-	httpc:request("http://www.example.com").
-
 fetch() ->
-	httpc:request(get, {"https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/us-counties-recent.csv", []}, [{ssl,[{verify,verify_none}]}], []).
+	httpc:request(get, {
+						"https://raw.githubusercontent.com/nytimes/covid-19-data/master/rolling-averages/us-counties-recent.csv", []
+					   },
+				  [{ssl,[{verify,verify_none}]}], []
+				 ).
 
 fetchBody() ->
-	element(3, element(2, fetch())).
+	{_, {_, _, Body}} = fetch(),
+	Body.
+
+filterRows(CityCounty) ->
+	[X || X <- string:tokens(fetchBody(), "\n"), string:find(X, CityCounty) /= nomatch].
+
 
 dallasRows() ->
-	[X || X <- string:tokens(fetchBody(), "\n"), string:find(X, "Dallas,Texas") /= nomatch].
+	filterRows("Dallas,Texas").
 
 dallasToday() ->
 	list_to_tuple(string:tokens(lists:last(lists:sort(dallasRows())), ",")).
